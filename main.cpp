@@ -113,7 +113,7 @@ static void handle(int fd) {
         for (size_t i = 0; i < (size_t)w * h; ++i)
             img.px[i] = {(float)(uint8_t)body[3 * i], (float)(uint8_t)body[3 * i + 1], (float)(uint8_t)body[3 * i + 2]};
 
-        PainterParams P = makeParams(w, detail, rounds);
+        PainterParams P = makeParams(w, h, detail, rounds);
         auto strokes = paint(img, P);
         respond(fd, 200, "application/json", toJson(strokes, w, h));
         return;
@@ -138,6 +138,9 @@ int main(int argc, char** argv) {
     for (;;) {
         int fd = accept(srv, nullptr, nullptr);
         if (fd < 0) continue;
+        // Drop idle connections so one stalled client cannot block the single-threaded server.
+        timeval tv{10, 0};
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
         handle(fd);
         close(fd);
     }

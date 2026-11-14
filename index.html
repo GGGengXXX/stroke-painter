@@ -6,200 +6,145 @@
 <title>Stroke Painter</title>
 <style>
   :root {
-    --bg: #f5f3ee; --panel: #ffffff; --ink: #1f1d1a; --muted: #6f6a61; --faint: #a39d93;
-    --line: #e6e2d9; --accent: #2f6b5a; --accent-2: #e9f1ee; --accent-ink: #ffffff;
-    --paper: #ffffff; --shadow: 0 1px 2px rgba(31,29,26,.05), 0 8px 24px rgba(31,29,26,.06);
+    --bg: #fafaf8; --ink: #1c1b19; --muted: #77726a; --faint: #b3ada3;
+    --line: #e9e6df; --panel: #ffffff; --accent: #2f6b5a; --accent-soft: #e7f0ec; --accent-ink: #ffffff;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #141413; --panel: #1d1c1a; --ink: #eeece7; --muted: #a29d92; --faint: #6f6a61;
-      --line: #33312d; --accent: #86c2ad; --accent-2: #22302b; --accent-ink: #0f1f19;
-      --paper: #f4f2ed; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+      --bg: #161614; --ink: #ecebe6; --muted: #9b968c; --faint: #5d5951;
+      --line: #2c2b28; --panel: #1e1d1b; --accent: #8cc7b1; --accent-soft: #223029; --accent-ink: #0f1d18;
       color-scheme: dark;
     }
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  .wrap { max-width: 1120px; margin: 0 auto; padding-block: 32px 48px; padding-inline: 20px; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-block: 24px 40px; padding-inline: 20px; display: grid; gap: 20px; }
 
-  /* Header */
-  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .logo { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; }
-  .logo svg { width: 20px; height: 20px; }
-  h1 { font-size: 20px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
-  .sub { color: var(--muted); font-size: 13px; margin-top: 1px; }
-  .steps { display: flex; gap: 8px; font-size: 13px; color: var(--muted); }
-  .steps span { padding: 4px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); }
+  /* Top bar */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .title { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+  .hint { color: var(--muted); font-size: 13px; }
 
-  /* Layout */
-  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
-  @media (max-width: 760px) { .stage { grid-template-columns: 1fr; } }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
-  .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
-  .card-title { font-weight: 600; font-size: 14px; }
-  .badge { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-
-  /* Upload area */
-  .drop {
-    position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1 / 1;
-    border: 1.5px dashed var(--line); border-radius: 12px; background: var(--accent-2);
-    cursor: pointer; overflow: hidden; transition: border-color .15s, background .15s;
-  }
-  .drop:hover, .drop.drag { border-color: var(--accent); }
-  .drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-  .placeholder { text-align: center; color: var(--muted); padding: 24px; pointer-events: none; }
-  .placeholder .icon { width: 44px; height: 44px; margin: 0 auto 10px; color: var(--accent); }
-  .placeholder strong { display: block; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
-  .placeholder small { font-size: 13px; color: var(--faint); }
-  #preview { width: 100%; height: 100%; display: none; pointer-events: none; }
-  #preview canvas { width: 100%; height: 100%; display: block; object-fit: contain; }
-  .drop.has-img { border-style: solid; border-color: var(--line); }
-  .drop.has-img .placeholder { display: none; }
-  .drop.has-img #preview { display: block; }
-  .change-hint { position: absolute; right: 10px; bottom: 10px; font-size: 12px; background: var(--panel);
-                 color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; display: none; }
-  .drop.has-img:hover .change-hint { display: block; }
-
-  /* Painting canvas */
-  .paper-wrap { position: relative; aspect-ratio: 1 / 1; border-radius: 12px; background: var(--paper);
-                border: 1px solid var(--line); overflow: hidden; display: grid; place-items: center; }
-  #out { width: 100%; height: 100%; display: block; }
-  .empty-paper { position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
-                 color: #8a857b; font-size: 14px; pointer-events: none; padding: 24px; }
-  .empty-paper.hide { display: none; }
+  /* Stage */
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+  @media (max-width: 720px) { .stage { grid-template-columns: 1fr; } }
+  .pane-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .box { position: relative; width: 100%; border-radius: 10px; overflow: hidden; background: var(--panel);
+         border: 1px solid var(--line); display: grid; place-items: center; }
+  .box canvas { display: block; width: 100%; height: 100%; }
+  #drop { cursor: pointer; aspect-ratio: 1 / 1; }
+  #drop.drag { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  #drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .prompt { text-align: center; padding: 20px; color: var(--muted); pointer-events: none; }
+  .prompt b { display: block; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
+  .prompt small { color: var(--faint); font-size: 12px; }
+  #srcBox { display: none; }
+  #drop.has-img .prompt { display: none; }
+  #drop.has-img #srcBox { display: block; }
+  #paperBox { aspect-ratio: 1 / 1; background: #fff; border-color: var(--line); }
+  #paperBox .prompt { color: #9a958b; }
+  #paperBox.has-art .prompt { display: none; }
+  #paperBox canvas { object-fit: contain; }
 
   /* Controls */
-  .controls { margin-top: 20px; display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
-  .field-label { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
-  .field-label b { color: var(--ink); font-weight: 600; font-size: 14px; }
-  .field-hint { font-size: 12px; color: var(--faint); margin-top: 6px; }
-  input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; }
-  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-                padding: 12px 14px; border-radius: 12px; background: var(--accent-2); cursor: pointer; }
-  .toggle-row span { font-size: 14px; }
-  .toggle-row small { display: block; color: var(--muted); font-size: 12px; }
-  .toggle-row input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; margin: 0; }
+  .dock { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px;
+          display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); align-items: end; }
+  .ctl label.row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .ctl b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 4px 0 0; }
+  .switches { display: grid; gap: 10px; }
+  .switch { display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; user-select: none; }
+  .switch input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
 
-  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
-  button {
-    font: inherit; font-size: 14px; font-weight: 550; padding: 10px 18px; border-radius: 10px;
-    border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer;
-    transition: transform .05s, border-color .15s, background .15s; display: inline-flex; align-items: center; gap: 8px;
-  }
-  button:hover:not(:disabled) { border-color: var(--muted); }
-  button:active:not(:disabled) { transform: translateY(1px); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button { font: inherit; font-size: 13px; font-weight: 550; padding: 9px 16px; border-radius: 9px; cursor: pointer;
+           border: 1px solid var(--line); background: var(--panel); color: var(--ink); transition: border-color .15s, opacity .15s; }
+  button:hover:not(:disabled) { border-color: var(--faint); }
+  button:disabled { opacity: .4; cursor: default; }
   button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  button:disabled { opacity: .45; cursor: default; }
   button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; padding-inline: 22px; }
-  button.primary:hover:not(:disabled) { filter: brightness(1.06); }
   .spacer { flex: 1; }
 
   /* Progress */
-  .progress { margin-top: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); }
-  .progress-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-  #status { font-size: 14px; color: var(--ink); }
-  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 12px; }
-  .bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #fff)); transition: width .15s linear; border-radius: 4px; }
-  .rounds { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-  .pill { font-size: 12px; font-weight: 550; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--panel); }
-  .pill.on { background: var(--accent-2); border-color: transparent; color: var(--accent); }
-  .pill.now { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-  .tip { font-size: 12px; color: var(--faint); margin-top: 12px; }
+  .progress { display: grid; gap: 10px; }
+  .status-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .status-row span:first-child { color: var(--ink); }
+  .bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .15s linear; }
+  .rounds { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-size: 11px; padding: 3px 9px; border-radius: 999px; color: var(--faint); border: 1px solid var(--line); }
+  .chip.done { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); }
+  .chip.now { color: var(--accent-ink); background: var(--accent); border-color: transparent; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="brand">
-      <div class="logo" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 20c3-1 4-4 6-6s4-1 5-3 1-4 4-6"/><path d="M4 14c2 0 4-1 5-3"/></svg>
-      </div>
-      <div>
-        <h1>Stroke Painter</h1>
-        <div class="sub">Turns a photo into brush strokes, one round at a time</div>
-      </div>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <div class="title">Stroke Painter</div>
     </div>
-    <div class="steps" aria-hidden="true"><span>1 · Upload</span><span>2 · Adjust</span><span>3 · Paint</span></div>
+    <div class="hint">Drop, click, or paste (Cmd/Ctrl+V) an image</div>
   </header>
 
   <section class="stage">
-    <div class="card">
-      <div class="card-head">
-        <span class="card-title">1 · Your image</span>
-        <span class="badge" id="srcInfo">No image</span>
-      </div>
-      <label class="drop" id="drop">
-        <div class="placeholder" id="placeholder">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>
-          <strong>Drop a photo here</strong>
-          <small>click to choose a file, or press Cmd+V / Ctrl+V to paste</small>
+    <div>
+      <div class="pane-label"><span>Original</span><span id="srcInfo"></span></div>
+      <label class="box" id="drop">
+        <div class="prompt" id="prompt">
+          <b>Choose an image</b>
+          <small>Any size. Keeps its proportions.</small>
         </div>
-        <div id="preview"></div>
-        <span class="change-hint">Click to replace</span>
-        <input type="file" id="file" accept="image/*">
+        <div id="srcBox" style="width:100%"></div>
+        <input type="file" id="file" accept="image/*" aria-label="Choose an image">
       </label>
     </div>
-
-    <div class="card">
-      <div class="card-head">
-        <span class="card-title">2 · Painting</span>
-        <span class="badge" id="outInfo"></span>
-      </div>
-      <div class="paper-wrap">
+    <div>
+      <div class="pane-label"><span>Painting</span><span id="outInfo"></span></div>
+      <div class="box" id="paperBox">
         <canvas id="out" width="256" height="256"></canvas>
-        <div class="empty-paper" id="emptyPaper">The painting appears here once you press Paint.</div>
+        <div class="prompt" style="position:absolute;inset:0;display:grid;place-items:center">
+          <div><b>Your painting</b><small>Appears here when you press Paint</small></div>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="card controls" aria-label="Settings">
-    <div>
-      <div class="field-label"><span>Rounds</span><b id="roundsVal">5</b></div>
-      <input type="range" id="rounds" min="1" max="12" value="5" aria-label="Number of rounds">
-      <div class="field-hint">Each round adds finer detail on top of the last.</div>
+  <section class="dock" aria-label="Settings">
+    <div class="ctl">
+      <label class="row" for="rounds">Rounds <b id="roundsVal">5</b></label>
+      <input type="range" id="rounds" min="1" max="12" value="5">
     </div>
-    <div>
-      <div class="field-label"><span>Detail</span><b id="detailVal">Balanced</b></div>
-      <input type="range" id="detail" min="1" max="5" value="3" aria-label="Detail level">
-      <div class="field-hint">Higher detail takes longer to compute.</div>
+    <div class="ctl">
+      <label class="row" for="detail">Detail <b id="detailVal">Balanced</b></label>
+      <input type="range" id="detail" min="1" max="5" value="3">
     </div>
-    <div>
-      <div class="field-label"><span>Drawing speed</span><b id="speedVal">Normal</b></div>
-      <input type="range" id="speed" min="0" max="100" value="50" aria-label="Drawing speed">
-      <div class="field-hint" id="speedHint">Strokes per second</div>
+    <div class="ctl">
+      <label class="row" for="speed">Speed <b id="speedVal">Normal</b></label>
+      <input type="range" id="speed" min="0" max="100" value="50">
     </div>
-    <label class="toggle-row" for="pauseEach">
-      <span>Pause after each round<small>Review each stage before the next one</small></span>
-      <input type="checkbox" id="pauseEach" checked>
-    </label>
+    <div class="switches">
+      <label class="switch"><input type="checkbox" id="pauseEach" checked> Pause after each round</label>
+      <label class="switch"><input type="checkbox" id="recordVideo"> Record video (saved only if you download it)</label>
+    </div>
   </section>
 
-  <div class="actions">
-    <button class="primary" id="paint" disabled>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>
-      Paint
-    </button>
+  <section class="actions">
+    <button class="primary" id="paint" disabled>Paint</button>
     <button id="toggle" disabled>Pause</button>
-    <button id="next" hidden>Next round →</button>
+    <button id="next" hidden>Next round</button>
     <span class="spacer"></span>
-    <button id="download" disabled>Download PNG</button>
-  </div>
-
-  <section class="progress">
-    <div class="progress-top">
-      <div id="status">Upload an image to get started.</div>
-    </div>
-    <div class="bar"><i id="bar"></i></div>
-    <div class="rounds" id="pills"></div>
-    <div class="tip">Tip: start with Rounds 3–5 and Detail 2–3 for a quick preview.</div>
+    <button id="dlPng" disabled>Download PNG</button>
+    <button id="dlVideo" disabled>Download video</button>
   </section>
-</div>
+
+  <section class="progress" aria-live="polite">
+    <div class="status-row"><span id="status">Choose an image to begin.</span><span id="count"></span></div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="rounds" id="chips"></div>
+  </section>
+</main>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -208,33 +153,35 @@ const srcCanvas = document.createElement('canvas');
 const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true });
 const DETAIL_NAMES = ['Sketch', 'Light', 'Balanced', 'Detailed', 'Fine'];
 
-let img = null;                  // loaded HTMLImageElement
-let strokes = [];                // strokes from the server
-let roundEnd = [];               // roundEnd[r] = index one past the last stroke of round r
-let rounds = 0;
-let drawn = 0;                   // number of strokes already on the canvas
-let pos = 0;                     // continuous playback position (strokes)
-let playing = false, waiting = false, curRound = 0, lastT = 0, raf = 0;
+let img = null;            // loaded source image
+let srcW = 0, srcH = 0;    // working size of the source (keeps the image's aspect ratio)
+let outW = 0, outH = 0;    // painting size
+let strokes = [], roundEnd = [], rounds = 0;
+let drawn = 0, pos = 0, curRound = 0;
+let playing = false, waiting = false, lastT = 0, raf = 0;
+let rec = null, recChunks = [], videoBlob = null, videoExt = 'webm';
 
-function detailSize(d) { return 256 + 64 * (d - 1); }        // 256 .. 512 px working size
-function speedRate(v) { return 10 * Math.pow(200, v / 100); } // 10 .. 2000 strokes/s, log scale
-function speedName(v) {
-  const r = speedRate(v);
-  return r < 60 ? 'Slow' : r < 300 ? 'Normal' : r < 1000 ? 'Fast' : 'Very fast';
+// Longest side of the working image, from the Detail slider.
+function longSide(d) { return 256 + 64 * (d - 1); }        // 256 .. 512 px
+function speedRate(v) { return 10 * Math.pow(200, v / 100); } // 10 .. 2000 strokes/s
+function speedName(v) { const r = speedRate(v); return r < 60 ? 'Slow' : r < 300 ? 'Normal' : r < 1000 ? 'Fast' : 'Very fast'; }
+function sizeFor(iw, ih, L) {
+  return iw >= ih ? [L, Math.max(1, Math.round(L * ih / iw))] : [Math.max(1, Math.round(L * iw / ih)), L];
 }
 
-// ---- source image -------------------------------------------------------
+// ---- source image -----------------------------------------------------
 function renderSource() {
   if (!img) return;
-  const n = detailSize(+$('detail').value);
-  const s = Math.min(img.width, img.height);
-  srcCanvas.width = n; srcCanvas.height = n;
+  [srcW, srcH] = sizeFor(img.width, img.height, longSide(+$('detail').value));
+  srcCanvas.width = srcW; srcCanvas.height = srcH;
   srcCtx.fillStyle = '#fff';
-  srcCtx.fillRect(0, 0, n, n);
-  srcCtx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, n, n);
-  $('srcInfo').textContent = `${n} × ${n} px`;
-  $('preview').replaceChildren(srcCanvas);
+  srcCtx.fillRect(0, 0, srcW, srcH);
+  srcCtx.drawImage(img, 0, 0, srcW, srcH);
+  $('srcBox').replaceChildren(srcCanvas);
+  srcCanvas.style.cssText = 'width:100%;height:auto;display:block;';
   $('drop').classList.add('has-img');
+  $('drop').style.aspectRatio = `${srcW} / ${srcH}`;
+  $('srcInfo').textContent = `${srcW} × ${srcH}`;
 }
 
 function loadFile(file) {
@@ -256,59 +203,55 @@ const drop = $('drop');
 ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('drag'); }));
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('drag'); }));
 drop.addEventListener('drop', (e) => loadFile(e.dataTransfer.files[0]));
-
-// Paste an image from the system clipboard (screenshot, copied picture, etc.).
 document.addEventListener('paste', (e) => {
-  const items = Array.from(e.clipboardData?.items || []);
-  const item = items.find(i => i.kind === 'file' && i.type.startsWith('image/'));
+  const item = Array.from(e.clipboardData?.items || []).find(i => i.kind === 'file' && i.type.startsWith('image/'));
   if (!item) return;
   e.preventDefault();
   loadFile(item.getAsFile());
 });
 
-// ---- controls -------------------------------------------------------------
+// ---- controls ---------------------------------------------------------
 $('rounds').addEventListener('input', () => $('roundsVal').textContent = $('rounds').value);
 $('detail').addEventListener('input', () => {
   $('detailVal').textContent = DETAIL_NAMES[+$('detail').value - 1];
   renderSource();
 });
-function refreshSpeed() {
-  const v = +$('speed').value;
-  $('speedVal').textContent = speedName(v);
-  $('speedHint').textContent = `${Math.round(speedRate(v))} strokes per second`;
-}
+function refreshSpeed() { $('speedVal').textContent = speedName(+$('speed').value); }
 $('speed').addEventListener('input', refreshSpeed);
 refreshSpeed();
 
 function setStatus(t) { $('status').textContent = t; }
-
 function setBusy(busy) {
   $('paint').disabled = busy || !img;
   $('rounds').disabled = busy;
   $('detail').disabled = busy;
 }
 
-// ---- painting -------------------------------------------------------------
+// ---- painting ---------------------------------------------------------
 async function paint() {
   if (!img) return;
-  cancelAnimationFrame(raf);
+  clearTimeout(raf);
+  stopRecording();
   playing = false; waiting = false;
-  const d = +$('detail').value;
-  const n = detailSize(d);
   rounds = +$('rounds').value;
+  const d = +$('detail').value;
+  [outW, outH] = [srcW, srcH];
 
-  // Start from a blank canvas.
-  $('out').width = n; $('out').height = n;
+  // Blank canvas at the image's working size.
+  const cv = $('out');
+  cv.width = outW; cv.height = outH;
+  $('paperBox').style.aspectRatio = `${outW} / ${outH}`;
   out.fillStyle = '#fff';
-  out.fillRect(0, 0, n, n);
-  $('emptyPaper').classList.add('hide');
+  out.fillRect(0, 0, outW, outH);
+  $('paperBox').classList.add('has-art');
   strokes = []; roundEnd = []; drawn = 0; pos = 0; curRound = 0;
-  $('download').disabled = true;
+  videoBlob = null;
+  $('dlPng').disabled = true;
+  $('dlVideo').disabled = true;
   updateProgress();
 
-  // Pack RGB from the source canvas.
-  const rgba = srcCtx.getImageData(0, 0, n, n).data;
-  const rgb = new Uint8Array(n * n * 3);
+  const rgba = srcCtx.getImageData(0, 0, outW, outH).data;
+  const rgb = new Uint8Array(outW * outH * 3);
   for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
     rgb[j] = rgba[i]; rgb[j + 1] = rgba[i + 1]; rgb[j + 2] = rgba[i + 2];
   }
@@ -316,23 +259,21 @@ async function paint() {
   setBusy(true);
   $('toggle').disabled = true;
   $('next').hidden = true;
-  setStatus('Computing strokes on the server… this can take a few seconds.');
+  setStatus('Computing strokes on the server…');
   try {
     const res = await fetch('/paint', {
       method: 'POST',
-      headers: { 'X-Width': String(n), 'X-Height': String(n), 'X-Rounds': String(rounds),
+      headers: { 'X-Width': String(outW), 'X-Height': String(outH), 'X-Rounds': String(rounds),
                  'X-Detail': String(d), 'Content-Type': 'application/octet-stream' },
       body: rgb,
     });
     if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    strokes = data.strokes;
+    strokes = (await res.json()).strokes;
   } catch (e) {
     setStatus('Something went wrong: ' + e.message);
     setBusy(false);
     return;
   }
-  // Round boundaries: roundEnd[r] = index one past the last stroke of round r.
   roundEnd = []; let idx = 0;
   for (let r = 0; r < rounds; ++r) {
     while (idx < strokes.length && strokes[idx].round <= r) idx++;
@@ -341,10 +282,34 @@ async function paint() {
   setBusy(false);
   $('toggle').disabled = false;
   $('toggle').textContent = 'Pause';
+  startRecording();
   playing = true; lastT = performance.now();
-  raf = requestAnimationFrame(tick);
+  scheduleTick();
 }
 
+// ---- optional video recording (in memory only, nothing written unless downloaded)
+function startRecording() {
+  if (!$('recordVideo').checked || !window.MediaRecorder) return;
+  const stream = $('out').captureStream(30);
+  const type = ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm']
+    .find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const r = new MediaRecorder(stream, type ? { mimeType: type, videoBitsPerSecond: 6000000 } : {});
+  const chunks = [];
+  rec = r;
+  r.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  r.onstop = () => {
+    videoExt = r.mimeType.includes('mp4') ? 'mp4' : 'webm';
+    videoBlob = new Blob(chunks, { type: r.mimeType });
+    $('dlVideo').disabled = false;
+  };
+  r.start(500);
+}
+function stopRecording() {
+  if (rec && rec.state !== 'inactive') rec.stop();
+  rec = null;
+}
+
+// ---- playback ---------------------------------------------------------
 function drawStroke(s) {
   const [r, g, b] = s.color;
   out.strokeStyle = `rgb(${r},${g},${b})`;
@@ -357,23 +322,23 @@ function drawStroke(s) {
   if (s.pts.length === 1) out.lineTo(s.pts[0][0] + 0.01, s.pts[0][1]);
   out.stroke();
 }
+function drawUpTo(n) { for (; drawn < n; ++drawn) drawStroke(strokes[drawn]); }
 
-function drawUpTo(n) {
-  for (; drawn < n; ++drawn) drawStroke(strokes[drawn]);
-}
+// Timer-based loop (~60 fps); keeps working even when animation frames are throttled.
+function scheduleTick() { raf = setTimeout(() => tick(performance.now()), 16); }
 
 function tick(t) {
   const dt = Math.min(0.1, (t - lastT) / 1000);
   lastT = t;
   if (playing && !waiting && strokes.length) {
     pos += dt * speedRate(+$('speed').value);
-    const limit = $('pauseEach').checked ? roundEnd[curRound] : strokes.length;
+    const pause = $('pauseEach').checked;
+    const limit = pause ? roundEnd[curRound] : strokes.length;
     if (pos >= limit) {
       pos = limit;
       drawUpTo(limit);
-      if ($('pauseEach').checked && curRound < rounds - 1) {
-        waiting = true;
-        playing = false;
+      if (pause && curRound < rounds - 1) {
+        waiting = true; playing = false;
         $('toggle').disabled = true;
         $('next').hidden = false;
       } else if (limit >= strokes.length) {
@@ -385,65 +350,69 @@ function tick(t) {
     }
     updateProgress();
   }
-  if (playing || waiting || drawn < strokes.length) raf = requestAnimationFrame(tick);
-  else if (drawn >= strokes.length && strokes.length) finish();
+  if (playing || waiting || drawn < strokes.length) scheduleTick();
+  else if (strokes.length) finish();
 }
 
 function finish() {
-  setStatus(`Finished: ${strokes.length.toLocaleString()} strokes over ${rounds} rounds.`);
+  stopRecording();
+  setStatus(`Finished · ${rounds} rounds`);
   setBusy(false);
   $('toggle').disabled = true;
   $('next').hidden = true;
-  $('download').disabled = false;
+  $('dlPng').disabled = false;
+  if (!$('recordVideo').checked) $('dlVideo').disabled = true;
+  updateProgress();
 }
 
 $('toggle').addEventListener('click', () => {
   if (drawn >= strokes.length) return;
   playing = !playing;
-  if (playing) { lastT = performance.now(); raf = requestAnimationFrame(tick); }
+  if (playing) { lastT = performance.now(); scheduleTick(); }
   $('toggle').textContent = playing ? 'Pause' : 'Resume';
 });
-
 $('next').addEventListener('click', () => {
-  curRound++;
-  waiting = false;
-  playing = true;
+  curRound++; waiting = false; playing = true;
   $('next').hidden = true;
   $('toggle').disabled = false;
   $('toggle').textContent = 'Pause';
   lastT = performance.now();
-  raf = requestAnimationFrame(tick);
+  scheduleTick();
 });
-
-$('download').addEventListener('click', () => {
-  const a = document.createElement('a');
-  a.href = $('out').toDataURL('image/png');
-  a.download = `painting-${rounds}-rounds.png`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-});
-
 $('paint').addEventListener('click', paint);
 
+// ---- downloads --------------------------------------------------------
+function download(href, name) {
+  const a = document.createElement('a');
+  a.href = href; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+$('dlPng').addEventListener('click', () => download($('out').toDataURL('image/png'), `painting-${rounds}-rounds.png`));
+$('dlVideo').addEventListener('click', () => {
+  if (!videoBlob) return;
+  const url = URL.createObjectURL(videoBlob);
+  download(url, `painting-${rounds}-rounds.${videoExt}`);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+});
+
+// ---- progress ---------------------------------------------------------
 function updateProgress() {
   const total = strokes.length || 1;
   $('bar').style.width = (100 * drawn / total) + '%';
-  const doneRound = drawn === 0 ? -1 : strokes[drawn - 1].round;
-  const shown = drawn === 0 ? 0 : doneRound + 1;
-  $('pills').replaceChildren(...Array.from({ length: rounds }, (_, r) => {
+  const shown = drawn === 0 ? 0 : strokes[drawn - 1].round + 1;
+  $('chips').replaceChildren(...Array.from({ length: rounds }, (_, r) => {
     const el = document.createElement('span');
-    const current = playing && r === Math.max(0, shown - 1);
-    el.className = 'pill' + (current ? ' now' : r < shown ? ' on' : '');
+    const now = playing && r === Math.max(0, shown - 1);
+    el.className = 'chip' + (now ? ' now' : r < shown ? ' done' : '');
     el.textContent = `Round ${r + 1}`;
     return el;
   }));
   if (playing || waiting) {
-    const label = waiting ? `Paused after round ${shown} of ${rounds}. Ready for the next round?` : `Painting round ${Math.min(rounds, shown + 1)} of ${rounds}`;
-    setStatus(`${label}  ·  ${drawn.toLocaleString()} / ${strokes.length.toLocaleString()} strokes`);
+    setStatus(waiting ? `Paused after round ${shown} of ${rounds}. Ready for the next round?`
+                      : `Painting round ${Math.min(rounds, shown + 1)} of ${rounds}`);
   }
-  $('outInfo').textContent = strokes.length ? `${drawn.toLocaleString()} / ${strokes.length.toLocaleString()} strokes` : '';
-  if (strokes.length) $('emptyPaper').classList.add('hide');
+  $('count').textContent = strokes.length ? `${drawn.toLocaleString()} / ${strokes.length.toLocaleString()} strokes` : '';
+  $('outInfo').textContent = outW ? `${outW} × ${outH}` : '';
 }
 </script>
 </body>

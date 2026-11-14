@@ -55,13 +55,13 @@ struct PainterParams {
 
 // Detail 1..5 -> finer final brush and more candidate strokes per round.
 // size is the working resolution (square); candidate count scales with its area.
-static PainterParams makeParams(int size, int detail, int rounds) {
+static PainterParams makeParams(int w, int h, int detail, int rounds) {
     PainterParams P;
     detail = std::max(1, std::min(detail, 5));
     P.rounds = std::max(1, std::min(rounds, 20));
-    P.canvasSize = size;
+    P.canvasSize = std::max(w, h);
     P.lastRadius = 3.0f - 0.4f * (detail - 1);  // 3.0 .. 1.4 px
-    double area = (double)size * size / (256.0 * 256.0);
+    double area = (double)w * h / (256.0 * 256.0);
     P.candidatesPerRound = (int)(3000 * area * (0.6 + 0.4 * detail));
     return P;
 }
