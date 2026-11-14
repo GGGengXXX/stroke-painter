@@ -16,10 +16,17 @@
 #include <string>
 #include <iostream>
 
-static std::string readFile(const std::string& p) {
-    std::ifstream f(p, std::ios::binary);
-    std::stringstream ss; ss << f.rdbuf();
-    return ss.str();
+static std::string mimeFor(const std::string& f) {
+    auto ends = [&](const char* ext) {
+        size_t n = std::strlen(ext);
+        return f.size() >= n && f.compare(f.size() - n, n, ext) == 0;
+    };
+    if (ends(".html")) return "text/html; charset=utf-8";
+    if (ends(".js")) return "text/javascript; charset=utf-8";
+    if (ends(".wasm")) return "application/wasm";
+    if (ends(".css")) return "text/css; charset=utf-8";
+    if (ends(".png")) return "image/png";
+    return "application/octet-stream";
 }
 
 static std::string toJson(const std::vector<Stroke>& strokes, int w, int h) {
@@ -87,8 +94,17 @@ static void handle(int fd) {
     std::string method, path;
     line >> method >> path;
 
-    if (method == "GET" && (path == "/" || path == "/index.html")) {
-        respond(fd, 200, "text/html; charset=utf-8", readFile("index.html"));
+    if (method == "GET") {
+        // Static files live in www/ (index.html, painter.js, painter.wasm, painter-worker.js).
+        std::string file = (path == "/") ? "index.html" : path.substr(1);
+        std::ifstream check("www/" + file, std::ios::binary);
+        if (!check || file.find("..") != std::string::npos) {
+            respond(fd, 404, "text/plain", "not found");
+            return;
+        }
+        std::stringstream ss;
+        ss << check.rdbuf();
+        respond(fd, 200, mimeFor(file), ss.str());
         return;
     }
     if (method == "POST" && path == "/paint") {

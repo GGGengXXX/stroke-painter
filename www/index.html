@@ -45,7 +45,8 @@
   #drop.has-img #srcBox { display: block; }
   #paperBox { aspect-ratio: 1 / 1; background: #fff; border-color: var(--line); }
   #paperBox .prompt { color: #9a958b; }
-  #paperBox.has-art .prompt { display: none; }
+  .paper-hint { position: absolute; inset: 0; display: grid; place-items: center; }
+  #paperBox.has-art .paper-hint { display: none; }
   #paperBox canvas { object-fit: contain; }
 
   /* Controls */
@@ -104,7 +105,7 @@
       <div class="pane-label"><span>Painting</span><span id="outInfo"></span></div>
       <div class="box" id="paperBox">
         <canvas id="out" width="256" height="256"></canvas>
-        <div class="prompt" style="position:absolute;inset:0;display:grid;place-items:center">
+        <div class="prompt paper-hint">
           <div><b>Your painting</b><small>Appears here when you press Paint</small></div>
         </div>
       </div>
@@ -228,6 +229,40 @@ function setBusy(busy) {
 }
 
 // ---- painting ---------------------------------------------------------
+// Preferred: run the WebAssembly painter in a worker (works offline, e.g. in the Android app).
+// Fallback: ask the C++ server at /paint (only when the page is served by it).
+function computeInWorker(rgb, w, h, rounds, detail) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker('painter-worker.js');
+    worker.onmessage = (e) => {
+      worker.terminate();
+      if (e.data.error) reject(new Error(e.data.error));
+      else resolve(JSON.parse(e.data.json).strokes);
+    };
+    worker.onerror = () => { worker.terminate(); reject(new Error('worker unavailable')); };
+    worker.postMessage({ rgb, w, h, rounds, detail });
+  });
+}
+
+async function computeOnServer(rgb, w, h, rounds, detail) {
+  const res = await fetch('/paint', {
+    method: 'POST',
+    headers: { 'X-Width': String(w), 'X-Height': String(h), 'X-Rounds': String(rounds),
+               'X-Detail': String(detail), 'Content-Type': 'application/octet-stream' },
+    body: rgb,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()).strokes;
+}
+
+async function computeStrokes(rgb, w, h, rounds, detail) {
+  try {
+    return await computeInWorker(rgb, w, h, rounds, detail);
+  } catch (workerError) {
+    return await computeOnServer(rgb, w, h, rounds, detail);
+  }
+}
+
 async function paint() {
   if (!img) return;
   clearTimeout(raf);
@@ -259,16 +294,9 @@ async function paint() {
   setBusy(true);
   $('toggle').disabled = true;
   $('next').hidden = true;
-  setStatus('Computing strokes on the server…');
+  setStatus('Computing strokes…');
   try {
-    const res = await fetch('/paint', {
-      method: 'POST',
-      headers: { 'X-Width': String(outW), 'X-Height': String(outH), 'X-Rounds': String(rounds),
-                 'X-Detail': String(d), 'Content-Type': 'application/octet-stream' },
-      body: rgb,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    strokes = (await res.json()).strokes;
+    strokes = await computeStrokes(rgb, outW, outH, rounds, d);
   } catch (e) {
     setStatus('Something went wrong: ' + e.message);
     setBusy(false);
